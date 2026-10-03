@@ -10,10 +10,15 @@ using Sample.Datasync.Server.Db;
 namespace Sample.Datasync.Server.Controllers;
 
 [Route("tables/[controller]")]
+[ApiExplorerSettings(IgnoreApi = false)]
 public class TodoItemController : TableController<TodoItem>
 {
     public TodoItemController(AppDbContext context) 
         : base(new EntityTableRepository<TodoItem>(context))
     {
+        // UnsafeEntityLogging is intentionally left at its secure default (false).
+        // This sample stores user-supplied TodoItem content (Title), so only the
+        // entity ID is logged; the full serialized entity is never written to the logs.
+        Options = new TableControllerOptions { UnsafeEntityLogging = false };
     }
 }

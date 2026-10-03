@@ -6,7 +6,7 @@
 
 using CommunityToolkit.Datasync.Server;
 using CommunityToolkit.Datasync.TestCommon.Models;
-using FluentAssertions;
+using AwesomeAssertions;
 using Xunit;
 
 namespace CommunityToolkit.Datasync.TestCommon;
@@ -19,9 +19,10 @@ namespace CommunityToolkit.Datasync.TestCommon;
 public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData, IMovie, new()
 {
     /// <summary>
-    /// The time that the current test started.
+    /// The time that the current test started.  Note that we subtrace 1ms to account
+    /// for rounding errors and clock skew.
     /// </summary>
-    protected DateTimeOffset StartTime { get; } = DateTimeOffset.UtcNow;
+    protected DateTimeOffset StartTime { get; } = DateTimeOffset.UtcNow.AddMilliseconds(-1);
 
     /// <summary>
     /// Returns true if all the requirements for live tests are met.
@@ -54,10 +55,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
     protected abstract Task<string> GetRandomEntityIdAsync(bool exists);
 
     #region AsQueryableAsync
-    [SkippableFact]
+    [Fact]
     public async Task AsQueryableAsync_ReturnsQueryable()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         IQueryable<TEntity> sut = await Repository.AsQueryableAsync();
@@ -65,10 +66,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         sut.Should().NotBeNull().And.BeAssignableTo<IQueryable<TEntity>>();
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task AsQueryableAsync_CanRetrieveFilteredLists()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         int expected = TestData.Movies.Count<TEntity>(m => m.Rating == MovieRating.R);
@@ -80,10 +81,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         actual.Should().HaveCount(expected);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task AsQueryableAsync_CanRetrieveOrderedLists()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         int expected = TestData.Movies.Count<TEntity>();
@@ -99,10 +100,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         actual.Should().HaveCount(expected);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task AsQueryableAsync_CanUseTopAndSkip()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         IQueryable<TEntity> queryable = await Repository.AsQueryableAsync();
@@ -118,10 +119,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
     /// <summary>
     /// This test simulates a paged response from the client for a datasync operation.
     /// </summary>
-    [SkippableFact]
+    [Fact]
     public async Task AsQueryableAsync_CanRetrievePagedDatasyncQuery()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         IQueryable<TEntity> queryable = await Repository.AsQueryableAsync();
@@ -137,16 +138,20 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
     #endregion
 
     #region CreateAsync
-    [SkippableFact]
+    [Fact]
     public async Task CreateAsync_CreatesNewEntity_WithSpecifiedId()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(false);
         TEntity addition = TestData.Movies.OfType<TEntity>(TestData.Movies.BlackPanther, id);
         TEntity sut = addition.Clone();
         await Repository.CreateAsync(sut);
+
+        // Let's sleep for a tiny bit of time to allow any writes to actually happen.
+        await Task.Delay(100);
+
         TEntity actual = await GetEntityAsync(id);
 
         actual.Should().BeEquivalentTo<IMovie>(addition);
@@ -156,28 +161,32 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         actual.Version.Should().NotBeNullOrEmpty();
     }
 
-    [SkippableTheory]
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     public async Task CreateAsync_CreatesNewEntity_WithNullId(string id)
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         TEntity addition = TestData.Movies.OfType<TEntity>(TestData.Movies.BlackPanther);
         addition.Id = id;
         TEntity sut = addition.Clone();
         await Repository.CreateAsync(sut);
+
+        // Let's sleep for a tiny bit of time to allow any writes to actually happen.
+        await Task.Delay(100);
+
         TEntity actual = await GetEntityAsync(sut.Id);
 
         actual.Should().BeEquivalentTo<IMovie>(addition);
         actual.UpdatedAt.Should().BeAfter(StartTime);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task CreateAsync_ThrowsConflict()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(true);
@@ -191,10 +200,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         ex.Payload.Should().BeEquivalentTo<IMovie>(expected).And.HaveEquivalentMetadataTo(expected);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task CreateAsync_UpdatesMetadata()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(false);
@@ -204,6 +213,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         byte[] expectedVersion = new byte[] { 0x01, 0x02, 0x03, 0x04 };
         sut.Version = expectedVersion.ToArray();
         await Repository.CreateAsync(sut);
+
+        // Let's sleep for a tiny bit of time to allow any writes to actually happen.
+        await Task.Delay(100);
+
         TEntity actual = await GetEntityAsync(id);
 
         actual.Should().BeEquivalentTo<IMovie>(addition);
@@ -213,10 +226,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         actual.Version.Should().NotBeEquivalentTo(expectedVersion);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task CreateAsync_StoresDisconnectedEntity()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(false);
@@ -233,12 +246,12 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
     #endregion
 
     #region DeleteAsync
-    [SkippableTheory]
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     public async Task DeleteAsync_Throws_OnBadIds(string id)
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         Func<Task> act = async () => await Repository.DeleteAsync(id);
@@ -247,10 +260,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         (await GetEntityCountAsync()).Should().Be(TestData.Movies.Count<TEntity>());
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task DeleteAsync_Throws_OnMissingIds()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(false);
@@ -260,10 +273,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         (await GetEntityCountAsync()).Should().Be(TestData.Movies.Count<TEntity>());
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task DeleteAsync_Throws_WhenVersionMismatch()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(true);
@@ -274,10 +287,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         (await act.Should().ThrowAsync<HttpException>()).WithStatusCode(412).And.WithPayload(expected);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task DeleteAsync_Deletes_WhenVersionMatch()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(true);
@@ -289,10 +302,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         actual.Should().BeNull();
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task DeleteAsync_Deletes_WhenNoVersion()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(true);
@@ -304,10 +317,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
     #endregion
 
     #region ReadAsync
-    [SkippableFact]
+    [Fact]
     public async Task ReadAsync_ReturnsDisconnectedEntity()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(true);
@@ -317,12 +330,12 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         actual.Should().BeEquivalentTo(expected).And.NotBeSameAs(expected);
     }
 
-    [SkippableTheory]
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     public async Task ReadAsync_Throws_OnBadId(string id)
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         Func<Task> act = async () => _ = await Repository.ReadAsync(id);
@@ -330,10 +343,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         (await act.Should().ThrowAsync<HttpException>()).WithStatusCode(400);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task ReadAsync_Throws_OnMissingId()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(false);
@@ -344,12 +357,12 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
     #endregion
 
     #region ReplaceAsync
-    [SkippableTheory]
+    [Theory]
     [InlineData(null)]
     [InlineData("")]
     public async Task ReplaceAsync_Throws_OnBadId(string id)
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         TEntity replacement = TestData.Movies.OfType<TEntity>(TestData.Movies.BlackPanther);
@@ -359,10 +372,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         (await act.Should().ThrowAsync<HttpException>()).WithStatusCode(400);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task ReplaceAsync_Throws_OnMissingId()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(false);
@@ -372,10 +385,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         (await act.Should().ThrowAsync<HttpException>()).WithStatusCode(404);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task ReplaceAsync_Throws_OnVersionMismatch()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(true);
@@ -387,10 +400,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         (await act.Should().ThrowAsync<HttpException>()).WithStatusCode(412).And.WithPayload(expected);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task ReplaceAsync_Replaces_OnVersionMatch()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(true);
@@ -398,6 +411,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         TEntity expected = await GetEntityAsync(id);
         byte[] version = expected.Version.ToArray();
         await Repository.ReplaceAsync(replacement, version);
+
+        // Let's sleep for a tiny bit of time to allow any writes to actually happen.
+        await Task.Delay(100);
+
         TEntity actual = await GetEntityAsync(id);
 
         actual.Should().BeEquivalentTo<IMovie>(replacement).And.NotBeEquivalentTo<ITableData>(expected);
@@ -405,10 +422,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         actual.UpdatedAt.Should().BeAfter(StartTime);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task ReplaceAsync_Replaces_OnNoVersion()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<TEntity> Repository = await GetPopulatedRepositoryAsync();
         string id = await GetRandomEntityIdAsync(true);
@@ -416,6 +433,10 @@ public abstract class RepositoryTests<TEntity> where TEntity : class, ITableData
         TEntity expected = await GetEntityAsync(id);
         byte[] version = expected.Version.ToArray();
         await Repository.ReplaceAsync(replacement);
+
+        // Let's sleep for a tiny bit of time to allow any writes to actually happen.
+        await Task.Delay(100);
+
         TEntity actual = await GetEntityAsync(id);
 
         actual.Should().BeEquivalentTo<IMovie>(replacement).And.NotBeEquivalentTo<ITableData>(expected);

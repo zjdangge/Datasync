@@ -2,6 +2,8 @@
 
 Not all data needs to be synchronized.  You may want to do an online search of records for a search capability, for example.  To support this, The Datasync Community Toolkit supports an online client in addition to offline usage.
 
+If you are using the Datasync Community Toolkit with Blazor WASM, see [our guide on Blazor WASM usage](./advanced/blazor-wasm.md).
+
 ## Creating a Http Client Factory
 
 To create an online client, you must create an `IHttpClientFactory` that creates the appropriate `HttpClient` objects that are used to communicate with the remote service.  This can handle authentication, logging, and anything else that is required by the remote service.  At a minimum, a `BaseAddress` must be established.  To facilitate this, the Datasync Community Toolkit provides a default `HttpClientFactory` that can be used:
@@ -27,7 +29,7 @@ The `HttpClientOptions` allows you to specify the following values:
 * `Timeout` - a `TimeSpan` (default: 60 seconds); specifies the `HttpClient.Timeout` value for created clients.
 * `UserAgent` - the User-Agent header value for each request.  By default, a Datasync service specific value is used.
 
- The HTTP pipeline is an important mechanism by which you can adjust the requests as they flow through the Datasync Community Toolkit.  For instance, you might want to use a custom delegating handler for authentication, another for logging, and another for adding an API key to the request.  If you are adding a custom [HttpClientHandler](https://learn.microsoft.com/dotnet/api/system.net.http.httpclienthandler?view=net-8.0), then it should be the last element in the `HttpPipeline`.  You can specify a pipeline like this:
+ The HTTP pipeline is an important mechanism by which you can adjust the requests as they flow through the Datasync Community Toolkit.  For instance, you might want to use a custom delegating handler for authentication, another for logging, and another for adding an API key to the request.  If you are adding a custom [HttpClientHandler](https://learn.microsoft.com/dotnet/api/system.net.http.httpclienthandler?view=net-10.0), then it should be the last element in the `HttpPipeline`.  You can specify a pipeline like this:
 
 ```csharp
 using CommunityToolkit.Datasync.Client.Http;

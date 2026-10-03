@@ -270,16 +270,42 @@ internal class OperationsQueueManager : IOperationsQueueManager
 
         // Determine the list of queued operations in scope.
         List<DatasyncOperation> queuedOperations = await GetQueuedOperationsAsync(entityTypeNames, cancellationToken).ConfigureAwait(false);
+
+        // Signal we started the push operation.
+        this._context.SendSynchronizationEvent(new SynchronizationEventArgs()
+        {
+            EventType = SynchronizationEventType.PushStarted,
+            ItemsTotal = queuedOperations.Count
+        });
+
         if (queuedOperations.Count == 0)
         {
+            // Signal we ended the push operation.
+            this._context.SendSynchronizationEvent(new SynchronizationEventArgs()
+            {
+                EventType = SynchronizationEventType.PushEnded,
+                ItemsProcessed = 0,
+                ItemsTotal = 0
+            });
             return pushResult;
         }
+
+        int nrItemsProcessed = 0;
 
         // Push things in parallel, according to the PushOptions
         QueueHandler<DatasyncOperation> queueHandler = new(pushOptions.ParallelOperations, async operation =>
         {
             ServiceResponse? response = await PushOperationAsync(operation, cancellationToken).ConfigureAwait(false);
             pushResult.AddOperationResult(operation, response);
+            // We can run on multiple threads, so use Interlocked to update the number of items processed.
+            int newItemsProcessed = Interlocked.Increment(ref nrItemsProcessed);
+            this._context.SendSynchronizationEvent(new SynchronizationEventArgs()
+            {
+                EventType = SynchronizationEventType.PushItem,
+                ItemsProcessed = newItemsProcessed,
+                ItemsTotal = queuedOperations.Count,
+                PushOperation = operation,
+            });
         });
 
         // Enqueue and process all the queued operations in scope
@@ -288,6 +314,14 @@ internal class OperationsQueueManager : IOperationsQueueManager
 
         // Save the changes, this time we don't update the queue.
         _ = await this._context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false, cancellationToken).ConfigureAwait(false);
+
+        this._context.SendSynchronizationEvent(new SynchronizationEventArgs()
+        {
+            EventType = SynchronizationEventType.PushEnded,
+            ItemsProcessed = nrItemsProcessed,
+            ItemsTotal = queuedOperations.Count,
+        });
+
         return pushResult;
     }
 
@@ -363,8 +397,13 @@ internal class OperationsQueueManager : IOperationsQueueManager
         if (operation.Kind != OperationKind.Delete)
         {
             _ = response.ContentStream.Seek(0L, SeekOrigin.Begin); // Reset the memory stream to the beginning.
-            object? newValue = JsonSerializer.Deserialize(response.ContentStream, entityType, DatasyncSerializer.JsonSerializerOptions);
-            object? oldValue = await this._context.FindAsync(entityType, [operation.ItemId], cancellationToken).ConfigureAwait(false);
+            object? newValue = await JsonSerializer.DeserializeAsync(
+                response.ContentStream,
+                entityType,
+                DatasyncSerializer.JsonSerializerOptions,
+                cancellationToken);
+
+            object? oldValue = await FindOldValue(operation, entityType, cancellationToken);
             ReplaceDatabaseValue(oldValue, newValue);
         }
 
@@ -374,6 +413,32 @@ internal class OperationsQueueManager : IOperationsQueueManager
         }
 
         return null;
+    }
+
+    /// <summary>
+    /// Internal helper - find the old value for a datasync operation and an entity type.
+    /// </summary>
+    /// <param name="operation">The datasync operation.</param>
+    /// <param name="entityType">The entity type.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe.</param>
+    /// <returns>The object associated with the datasync operation, or <c>null</c>.</returns>
+    internal async ValueTask<object?> FindOldValue(DatasyncOperation operation, Type entityType, CancellationToken cancellationToken)
+    {
+        this.pushlock.Enter();
+        try
+        {
+            object? oldValue = await this._context
+                .FindAsync(
+                    entityType,
+                    [operation.ItemId],
+                    cancellationToken)
+                .ConfigureAwait(false);
+            return oldValue;
+        }
+        finally
+        {
+            this.pushlock.Exit();
+        }
     }
 
     /// <summary>

@@ -1,32 +1,30 @@
 # 🧰 Datasync Toolkit
 
-The Datasync Community Toolkit is a collection of libraries that implement a client-server system used for synchronizing data
-from the database table.  The Datasync Community Toolkit is a member of the Community Toolkit organization and published under the dotnet Foundation.
+The Datasync Community Toolkit is a collection of libraries that implement a client-server system used for synchronizing data from the database table.  The Datasync Community Toolkit is a member of the Community Toolkit organization and published under the dotnet Foundation.
 
 Currently, the library supports:
 
-* Server: [ASP.NET 8 or later](https://learn.microsoft.com/aspnet/core/)
-* Client: .NET 8 or later
+* Server: [ASP.NET Core 10.x or later](https://learn.microsoft.com/aspnet/core/)
+* Client: .NET clients using .NET 10.x or later
 
 The client platforms that have been tested include:
 
 * [Avalonia UI](https://www.avaloniaui.net/)
+* [Blazor WASM](https://learn.microsoft.com/en-us/aspnet/core/blazor/webassembly-build-tools-and-aot)
 * [.NET MAUI](https://dotnet.microsoft.com/apps/maui)
 * [Uno Platform](https://platform.uno/)
 * [Windows Presentation Framework (WPF)](https://learn.microsoft.com/dotnet/desktop/wpf/overview/?view=netdesktop-8.0)
 * [Windows UI Library (WinUI) 3](https://learn.microsoft.com/windows/apps/winui/winui3/)
 
-We support most databases that are supported by Entity Framework Core, along with an in-memory store and LiteDb.  Support for additional
-database types is easily added through our flexible repository pattern.
+We support most databases that are supported by Entity Framework Core, along with an in-memory store and LiteDb.  Support for additional database types is easily added through our flexible repository pattern.
 
 Other platforms may work, but have not been tested.
 
 ## 🙌 Getting Started
 
-Please take a look at the tutorials included in our [documentation](https://CommunityToolkit.github.io/Datasync).
+Please take a look at the tutorials included in our [documentation].
 
-You can easily get started by using the `dotnet new` command to create a new datasync server.  The template pre-configured ASP.NET Core, 
-Entity Framework Core, and the Datasync server libraries.  To install the template:
+You can easily get started by using the `dotnet new` command to create a new datasync server.  The template pre-configured ASP.NET Core, Entity Framework Core, and the Datasync server libraries.  To install the template:
 
 ```dotnetcli
 dotnet new -i CommunityToolkit.Datasync.Server.Template.CSharp
@@ -61,23 +59,43 @@ The following NuGet packages have been published:
 
 ## Running Live Tests
 
-The test suite for the library includes "live tests" against real servers that are not normally run.  To run those tests, you will need access to an
-Azure account (you can sign up for one for free):
+The majority of tests in the test suite provide [TestContainers](https://testcontainers.com/) so that the tests are run against real servers running inside containers.  However, some test suites have not been set up yet or do not work as expected.  For those services, you will need to provide a real service and configure the `.runsettings` file to run the service.  Here is a typical `.runsettings` file:
 
-1. Install the [Azure Developer CLI](https://learn.microsoft.com/azure/developer/azure-developer-cli/install-azd)
-2. Run `azd up` in a command line.
-
-This script will create several resources.  The cost of running those resources is approximately $40/month (US dollars).  However, you will only have 
-to run the services for less than an hour, so the cost of testing the library should be minimal.  The process will create a `.runsettings` file in the
-tests directory which you can use to enable the live testing. 
-
-Live testing can be run using the Visual Studio Test Explorer or via `dotnet test`.
-
-Once you have completed running the tests, you can remove the created services using `azd down`.  This will also remove the `.runsettings` file so that
-live tests are not attempted any more.
+```xml
+<?xml version="1.0" encoding="utf-8"?>
+<RunSettings>
+  <RunConfiguration>
+    <EnvironmentVariables>
+      <ENABLE_SQL_LOGGING>true</ENABLE_SQL_LOGGING>
+      <COSMOS_CONNECTION_STRING>{insert your connection string here}</COSMOS_CONNECTION_STRING>
+      <AZSQL_CONNECTION_STRING>{insert your connection string here}</AZSQL_CONNECTION_STRING>
+    </EnvironmentVariables>
+  </RunConfiguration>
+</RunSettings>
+```
 
 > **NOTE**: The `.runsettings` file contains secrets.  It should not be checked in.  We have added this file to the `.gitignore` to ensure that it is
 > not checked into public GitHub repositories.
+
+## 📖 Building the documentation site
+
+The documentation site is built with [MkDocs](https://www.mkdocs.org/).  To build and serve it locally:
+
+```sh
+python3 -m venv .venv-docs
+source .venv-docs/bin/activate
+pip install mkdocs mkdocs-mermaid2-plugin
+
+mkdocs serve
+```
+
+Browse to [http://localhost:7000](http://localhost:7000) to view the site.  `mkdocs serve` watches the `docs` folder and live-reloads whenever you make changes.
+
+To produce a static build instead (the output is written to `./site`, which is git-ignored):
+
+```sh
+mkdocs build
+```
 
 ## 🌍 Roadmap
 

@@ -24,10 +24,10 @@ public class Create_Tests(ServiceApplicationFactory factory) : ServiceTest(facto
     {
         ClientMovie source = new(TestData.Movies.BlackPanther) { Id = id };
 
-        HttpResponseMessage response = await this.client.PostAsJsonAsync(this.factory.MovieEndpoint, source, this.serializerOptions);
+        HttpResponseMessage response = await this.client.PostAsJsonAsync(this.factory.MovieEndpoint, source, this.serializerOptions, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        ClientMovie clientMovie = await response.Content.ReadFromJsonAsync<ClientMovie>(this.serializerOptions);
+        ClientMovie clientMovie = await response.Content.ReadFromJsonAsync<ClientMovie>(this.serializerOptions, TestContext.Current.CancellationToken);
         clientMovie.Should().NotBeNull().And.HaveChangedMetadata(id, this.StartTime).And.BeEquivalentTo<IMovie>(source);
 
         InMemoryMovie inMemoryMovie = this.factory.GetServerEntityById<InMemoryMovie>(clientMovie.Id);
@@ -43,10 +43,10 @@ public class Create_Tests(ServiceApplicationFactory factory) : ServiceTest(facto
         InMemoryMovie existingMovie = this.factory.GetRandomMovie();
         ClientMovie source = new(TestData.Movies.BlackPanther) { Id = existingMovie.Id };
 
-        HttpResponseMessage response = await this.client.PostAsJsonAsync(this.factory.MovieEndpoint, source, this.serializerOptions);
+        HttpResponseMessage response = await this.client.PostAsJsonAsync(this.factory.MovieEndpoint, source, this.serializerOptions, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
 
-        ClientMovie clientMovie = await response.Content.ReadFromJsonAsync<ClientMovie>(this.serializerOptions);
+        ClientMovie clientMovie = await response.Content.ReadFromJsonAsync<ClientMovie>(this.serializerOptions, TestContext.Current.CancellationToken);
         clientMovie.Should().NotBeNull().And.HaveEquivalentMetadataTo(existingMovie).And.BeEquivalentTo<IMovie>(existingMovie);
 
         response.Headers.ETag.Should().BeETag($"\"{clientMovie.Version}\"");
@@ -59,13 +59,43 @@ public class Create_Tests(ServiceApplicationFactory factory) : ServiceTest(facto
         this.factory.SoftDelete(existingMovie);
         ClientMovie source = new(TestData.Movies.BlackPanther) { Id = existingMovie.Id };
 
-        HttpResponseMessage response = await this.client.PostAsJsonAsync(this.factory.MovieEndpoint, source, this.serializerOptions);
+        HttpResponseMessage response = await this.client.PostAsJsonAsync(this.factory.MovieEndpoint, source, this.serializerOptions, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Conflict);
 
-        ClientMovie clientMovie = await response.Content.ReadFromJsonAsync<ClientMovie>(this.serializerOptions);
+        ClientMovie clientMovie = await response.Content.ReadFromJsonAsync<ClientMovie>(this.serializerOptions, TestContext.Current.CancellationToken);
         clientMovie.Should().NotBeNull().And.HaveEquivalentMetadataTo(existingMovie).And.BeEquivalentTo<IMovie>(existingMovie);
 
         response.Headers.ETag.Should().BeETag($"\"{clientMovie.Version}\"");
+    }
+
+    [Fact]
+    public async Task Create_ExistingId_WithACP_InView_Returns409()
+    {
+        InMemoryMovie existingMovie = this.factory.GetRandomMovie();
+        // The data view INCLUDES the conflicting entity, so the conflict should be surfaced as a 409 with payload.
+        this.factory.SetupAccessControlProvider(true, m => m.Id == existingMovie.Id);
+        ClientMovie source = new(TestData.Movies.BlackPanther) { Id = existingMovie.Id };
+
+        HttpResponseMessage response = await this.client.PostAsJsonAsync(this.factory.AuthorizedMovieEndpoint, source, this.serializerOptions, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.Conflict);
+
+        ClientMovie clientMovie = await response.Content.ReadFromJsonAsync<ClientMovie>(this.serializerOptions, TestContext.Current.CancellationToken);
+        clientMovie.Should().NotBeNull().And.HaveEquivalentMetadataTo(existingMovie).And.BeEquivalentTo<IMovie>(existingMovie);
+    }
+
+    [Fact]
+    public async Task Create_ExistingId_WithACP_NotInView_Returns400()
+    {
+        InMemoryMovie existingMovie = this.factory.GetRandomMovie();
+        // The data view EXCLUDES the conflicting entity, so the conflict must NOT be surfaced - return 400 with no payload.
+        this.factory.SetupAccessControlProvider(true, m => m.Id == "id-that-does-not-exist");
+        ClientMovie source = new(TestData.Movies.BlackPanther) { Id = existingMovie.Id };
+
+        HttpResponseMessage response = await this.client.PostAsJsonAsync(this.factory.AuthorizedMovieEndpoint, source, this.serializerOptions, TestContext.Current.CancellationToken);
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+
+        string content = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        content.Should().NotContain(existingMovie.Id);
     }
 
     [Fact]
@@ -82,10 +112,10 @@ public class Create_Tests(ServiceApplicationFactory factory) : ServiceTest(facto
             PointValue = GeographyPoint.Create(-122.333056, 47.609722)
         };
 
-        HttpResponseMessage response = await this.client.PostAsJsonAsync(this.factory.KitchenSinkEndpoint, source, this.serializerOptions);
+        HttpResponseMessage response = await this.client.PostAsJsonAsync(this.factory.KitchenSinkEndpoint, source, this.serializerOptions, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.Created);
 
-        ClientKitchenSink clientKitchenSink = await response.Content.ReadFromJsonAsync<ClientKitchenSink>(this.serializerOptions);
+        ClientKitchenSink clientKitchenSink = await response.Content.ReadFromJsonAsync<ClientKitchenSink>(this.serializerOptions, TestContext.Current.CancellationToken);
         clientKitchenSink.Should().NotBeNull().And.HaveChangedMetadata(id, this.StartTime).And.BeEquivalentTo<IKitchenSink>(source);
 
         InMemoryKitchenSink serverEntity = this.factory.GetServerEntityById<InMemoryKitchenSink>(id);
@@ -96,7 +126,7 @@ public class Create_Tests(ServiceApplicationFactory factory) : ServiceTest(facto
     public async Task Create_NonJsonData_Returns415()
     {
         const string content = "<html><body><h1>Not JSON</h1></body></html>";
-        HttpResponseMessage response = await this.client.PostAsync(this.factory.MovieEndpoint, new StringContent(content, Encoding.UTF8, "text/html"));
+        HttpResponseMessage response = await this.client.PostAsync(this.factory.MovieEndpoint, new StringContent(content, Encoding.UTF8, "text/html"), TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.UnsupportedMediaType);
     }
 
@@ -133,7 +163,7 @@ public class Create_Tests(ServiceApplicationFactory factory) : ServiceTest(facto
             source[propName] = propValue;
         }
 
-        HttpResponseMessage response = await this.client.PostAsJsonAsync(this.factory.MovieEndpoint, source, this.serializerOptions);
+        HttpResponseMessage response = await this.client.PostAsJsonAsync(this.factory.MovieEndpoint, source, this.serializerOptions, TestContext.Current.CancellationToken);
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
     }
 }

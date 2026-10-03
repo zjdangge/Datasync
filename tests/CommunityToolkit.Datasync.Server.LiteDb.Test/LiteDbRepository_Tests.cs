@@ -70,10 +70,10 @@ public class LiteDbRepository_Tests : RepositoryTests<LiteDbMovie>, IDisposable
     }
     #endregion
 
-    [SkippableFact]
+    [Fact]
     public async Task IdGenerator_Ulid_CanCreate()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<LiteDbMovie> repository = await GetPopulatedRepositoryAsync();
         string generatedId = string.Empty;
@@ -82,7 +82,7 @@ public class LiteDbRepository_Tests : RepositoryTests<LiteDbMovie>, IDisposable
         LiteDbMovie addition = TestData.Movies.OfType<LiteDbMovie>(TestData.Movies.BlackPanther);
         addition.Id = null;
         LiteDbMovie sut = addition.Clone();
-        await repository.CreateAsync(sut);
+        await repository.CreateAsync(sut, TestContext.Current.CancellationToken);
         LiteDbMovie actual = await GetEntityAsync(sut.Id);
 
         actual.Should().BeEquivalentTo<IMovie>(addition);
@@ -91,10 +91,10 @@ public class LiteDbRepository_Tests : RepositoryTests<LiteDbMovie>, IDisposable
         actual.Id.Should().Be(generatedId);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task VersionGenerator_Ticks_CanCreate()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<LiteDbMovie> repository = await GetPopulatedRepositoryAsync();
         byte[] generatedVersion = [];
@@ -108,7 +108,7 @@ public class LiteDbRepository_Tests : RepositoryTests<LiteDbMovie>, IDisposable
         LiteDbMovie addition = TestData.Movies.OfType<LiteDbMovie>(TestData.Movies.BlackPanther);
         addition.Id = null;
         LiteDbMovie sut = addition.Clone();
-        await repository.CreateAsync(sut);
+        await repository.CreateAsync(sut, TestContext.Current.CancellationToken);
         LiteDbMovie actual = await GetEntityAsync(sut.Id);
 
         actual.Should().BeEquivalentTo<IMovie>(addition);

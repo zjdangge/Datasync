@@ -126,10 +126,10 @@ public class InMemoryRepository_Tests : RepositoryTests<InMemoryMovie>
         await act.Should().ThrowAsync<ApplicationException>();
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task IdGenerator_Ulid_CanCreate()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<InMemoryMovie> repository = await GetPopulatedRepositoryAsync();
         string generatedId = string.Empty;
@@ -138,7 +138,7 @@ public class InMemoryRepository_Tests : RepositoryTests<InMemoryMovie>
         InMemoryMovie addition = TestData.Movies.OfType<InMemoryMovie>(TestData.Movies.BlackPanther);
         addition.Id = null;
         InMemoryMovie sut = addition.Clone();
-        await repository.CreateAsync(sut);
+        await repository.CreateAsync(sut, TestContext.Current.CancellationToken);
         InMemoryMovie actual = await GetEntityAsync(sut.Id);
 
         actual.Should().BeEquivalentTo<IMovie>(addition);
@@ -147,10 +147,10 @@ public class InMemoryRepository_Tests : RepositoryTests<InMemoryMovie>
         actual.Id.Should().Be(generatedId);
     }
 
-    [SkippableFact]
+    [Fact]
     public async Task VersionGenerator_Ticks_CanCreate()
     {
-        Skip.IfNot(CanRunLiveTests());
+        Assert.SkipUnless(CanRunLiveTests(), "Live tests are not enabled.");
 
         IRepository<InMemoryMovie> repository = await GetPopulatedRepositoryAsync();
         byte[] generatedVersion = [];
@@ -164,7 +164,7 @@ public class InMemoryRepository_Tests : RepositoryTests<InMemoryMovie>
         InMemoryMovie addition = TestData.Movies.OfType<InMemoryMovie>(TestData.Movies.BlackPanther);
         addition.Id = null;
         InMemoryMovie sut = addition.Clone();
-        await repository.CreateAsync(sut);
+        await repository.CreateAsync(sut, TestContext.Current.CancellationToken);
         InMemoryMovie actual = await GetEntityAsync(sut.Id);
 
         actual.Should().BeEquivalentTo<IMovie>(addition);

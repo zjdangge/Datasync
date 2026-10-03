@@ -9,7 +9,7 @@ Because the datasync service is designed to provide disconnected access over int
 
 ## Supported Platforms
 
-The ASP.NET Core packages support ASP.NET 8.0 or later.
+The ASP.NET Core packages support ASP.NET 10.0 or later.
 
 The datasync service support a number of backend database servers, and allows for the custom implementation of repositories.  Each entity that is synchronized must meet the following criteria:
 
@@ -37,8 +37,8 @@ A datasync server based on the Datasync Community Toolkit supports:
 
 To create a new datasync service:
 
-1. Create an ASP.NET 8.0 (or later) WebAPI project.
-2. Add Entity Framework Core.
+1. Create an ASP.NET 10.0 (or later) WebAPI project.
+2. Add Entity Framework Core 10.0 (or later).
 3. Add Datasync Community Toolkit.
 
 For information on creating an ASP.NET Core service with Entity Framework Core, see [the official tutorial](https://learn.microsoft.com/aspnet/core/tutorials/first-web-api).
@@ -130,7 +130,8 @@ The options you can set include:
 * `PageSize` (int, default: 100) is the maximum number of items a query operation returns in a single page.
 * `MaxTop` (int, default: 512000) is the maximum number of items a user can request in a single operation.
 * `EnableSoftDelete` (bool, default: false) enables soft-delete, which marks items as deleted instead of deleting them from the database.  Soft delete allows clients to update their offline cache, but requires that deleted items are purged from the database separately.
-* `UnauthorizedStatusCode` (int, default: 401 Unauthorized) is the status code returned when the user isn't allowed to do an action.
+* `UnauthorizedStatusCode` (int, default: 401 Unauthorized) is the status code returned when the user isn't allowed to do an action.  The value must be a client error (4xx) status code in the range 400-499.
+* `UnsafeEntityLogging` (bool, default: false) controls how much entity data is written to the logs.  When `false`, only the entity ID is logged at `Information` level.  When `true`, the entity ID is logged at `Information` level and the full (serialized) entity contents are logged at `Debug` level.  Entity contents may include personally identifiable information (PII), secrets, or other sensitive business data, so only enable this option when the additional diagnostic detail is required and the log sink is appropriately secured.
 
 ## Configure access permissions
 
@@ -200,9 +201,14 @@ To use this access control provider, update your `TableController` as follows:
 
 If you want to allow both unauthenticated and authenticated access to a table, decorate the controller with `[AllowAnonymous]` instead of `[Authorize]`.
 
+!!! warning
+    It is very easy to accidentally leak data for a different user when using access control providers to limit the data.  If the operation is create and the entity that exists is for another user, the response will contain the information for the other user.
+
+    To prevent this data leakage case, it is important to add a filtering that ensures the data being returned is for the same user.
+
 ## Configure logging
 
-Logging is handled through [the normal logging mechanism](https://learn.microsoft.com/aspnet/core/fundamentals/logging/?view=aspnetcore-8.0) for ASP.NET Core.  Assign the `ILogger` object to the `Logger` property:
+Logging is handled through [the normal logging mechanism](https://learn.microsoft.com/aspnet/core/fundamentals/logging/?view=aspnetcore-10.0) for ASP.NET Core.  Assign the `ILogger` object to the `Logger` property:
 
     [Route("tables/[controller]")]
     public class ModelController : TableController<Model>
@@ -255,12 +261,12 @@ The `TableController<T>` base class contains an event handler that is called at 
 
 ## OpenAPI Support
 
-You can publish the API defined by data sync controllers using [NSwag](https://learn.microsoft.com/en-us/aspnet/core/tutorials/getting-started-with-nswag?view=aspnetcore-8.0&tabs=visual-studio), [Swashbuckle](https://learn.microsoft.com/en-us/aspnet/core/tutorials/getting-started-with-swashbuckle?view=aspnetcore-8.0&tabs=visual-studio), or the [OpenApi support in .NET 9](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/overview?view=aspnetcore-9.0).  In all cases, start by setting up the service as you normally would for the chosen library. 
+You can publish the API defined by data sync controllers using [NSwag](https://learn.microsoft.com/en-us/aspnet/core/tutorials/getting-started-with-nswag?view=aspnetcore-10.0&tabs=visual-studio), [Swashbuckle](https://learn.microsoft.com/en-us/aspnet/core/tutorials/getting-started-with-swashbuckle?view=aspnetcore-10.0&tabs=visual-studio), or the [OpenApi support in .NET 10](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/overview?view=aspnetcore-10.0).  In all cases, start by setting up the service as you normally would for the chosen library. 
 
 Review the instructions for each library:
 
 * [NSwag](./openapi/nswag.md)
-* [OpenApi](./openapi/net9.md)
+* [OpenApi](./openapi/net10.md)
 * [Swashbuckle](./openapi/swashbuckle.md)
 
 Currently, NSwag provides the best option for OpenApi document generation.

@@ -11,17 +11,17 @@ namespace CommunityToolkit.Datasync.TestCommon.Fixtures;
 [ExcludeFromCodeCoverage]
 public class MongoDatabaseFixture : IAsyncLifetime
 {
+    private const string imageName = "mongo:latest";
     private readonly MongoDbContainer _container;
 
     public MongoDatabaseFixture()
     {
-        this._container = new MongoDbBuilder()
-            .WithImage("mongo:latest")
+        this._container = new MongoDbBuilder(imageName)
             .Build();
     }
 
     /// <inheritdoc />
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (this._container is not null)
         {
@@ -30,7 +30,7 @@ public class MongoDatabaseFixture : IAsyncLifetime
     }
 
     /// <inheritdoc />
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await this._container.StartAsync();
         ConnectionString = this._container.GetConnectionString();

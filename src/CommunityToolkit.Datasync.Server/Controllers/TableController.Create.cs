@@ -24,14 +24,41 @@ public partial class TableController<TEntity> : ODataController where TEntity : 
     {
         Logger.LogInformation("CreateAsync");
         TEntity entity = await DeserializeJsonContent(cancellationToken).ConfigureAwait(false);
-        Logger.LogInformation("CreateAsync: {entity}", entity.ToJsonString());
+        Logger.LogInformation("CreateAsync: {id}", entity.Id);
+        if (Options.UnsafeEntityLogging)
+        {
+            Logger.LogDebug("CreateAsync: entity {entity}", entity.ToJsonString());
+        }
 
         await AuthorizeRequestAsync(TableOperation.Create, entity, cancellationToken).ConfigureAwait(false);
         await AccessControlProvider.PreCommitHookAsync(TableOperation.Create, entity, cancellationToken).ConfigureAwait(false);
-        await Repository.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
+
+        try
+        {
+            await Repository.CreateAsync(entity, cancellationToken).ConfigureAwait(false);
+        }
+        catch (HttpException ex) when (ex.StatusCode == StatusCodes.Status409Conflict && ex.Payload is TEntity conflictingEntity)
+        {
+            // A conflicting entity exists.  If the conflicting entity is not in the client's data view, then
+            // returning it (or even acknowledging the conflict) would leak data the client is not allowed to see.
+            // In that case, return a generic Bad Request without the payload instead.
+            if (!AccessControlProvider.EntityIsInView(conflictingEntity))
+            {
+                Logger.LogWarning("CreateAsync: {id} statusCode=400 conflicting entity not in view", entity.Id);
+                throw new HttpException(StatusCodes.Status400BadRequest);
+            }
+
+            throw;
+        }
+
         await PostCommitHookAsync(TableOperation.Create, entity, cancellationToken).ConfigureAwait(false);
 
-        Logger.LogInformation("CreateAsync: created {entity}", entity.ToJsonString());
+        Logger.LogInformation("CreateAsync: created {id}", entity.Id);
+        if (Options.UnsafeEntityLogging)
+        {
+            Logger.LogDebug("CreateAsync: created entity {entity}", entity.ToJsonString());
+        }
+
         return CreatedAtRoute(new { id = entity.Id }, entity);
     }
 }

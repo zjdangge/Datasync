@@ -14,22 +14,21 @@ namespace CommunityToolkit.Datasync.TestCommon.Fixtures;
 [ExcludeFromCodeCoverage]
 public class PostgreSqlDatabaseFixture : IAsyncLifetime
 {
+    private const string imageName = "postgres:18-alpine";
     private readonly PostgreSqlContainer _container;
 
     public PostgreSqlDatabaseFixture()
     {
-        this._container = new PostgreSqlBuilder()
-            .WithImage("postgres:17-alpine")
+        this._container = new PostgreSqlBuilder(imageName)
             .WithCleanUp(true)
             .WithUsername("testuser")
             .WithPassword("testpassword")
             .WithDatabase("testdb")
-            .WithWaitStrategy(Wait.ForUnixContainer().UntilPortIsAvailable(5432))
             .Build();
     }
 
     /// <inheritdoc />
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (this._container is not null)
         {
@@ -38,7 +37,7 @@ public class PostgreSqlDatabaseFixture : IAsyncLifetime
     }
 
     /// <inheritdoc />
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await this._container.StartAsync();
         ConnectionString = this._container.GetConnectionString();

@@ -10,16 +10,16 @@ namespace CommunityToolkit.Datasync.TestCommon.Fixtures;
 [ExcludeFromCodeCoverage]
 public class MsSqlDatabaseFixture : IAsyncLifetime
 {
+    private const string imageName = "mcr.microsoft.com/mssql/server:2025-CU2-ubuntu-22.04";
     private readonly MsSqlContainer _container;
 
     public MsSqlDatabaseFixture()
     {
-        this._container = new MsSqlBuilder()
-            .Build();
+        this._container = new MsSqlBuilder(imageName).Build();
     }
 
     /// <inheritdoc />
-    public async Task DisposeAsync()
+    public async ValueTask DisposeAsync()
     {
         if (this._container is not null)
         {
@@ -28,7 +28,7 @@ public class MsSqlDatabaseFixture : IAsyncLifetime
     }
 
     /// <inheritdoc />
-    public async Task InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
         await this._container.StartAsync();
         ConnectionString = this._container.GetConnectionString();

@@ -9,6 +9,7 @@ using CommunityToolkit.Datasync.Client.Serialization;
 using CommunityToolkit.Datasync.Client.Test.Offline.Helpers;
 using CommunityToolkit.Datasync.TestCommon;
 using CommunityToolkit.Datasync.TestCommon.Databases;
+using CommunityToolkit.Datasync.TestCommon.Models;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using System.Net;
@@ -54,7 +55,7 @@ public class OfflineDbContext_Tests : BaseTest
         this.context.Handler.AddResponse(HttpStatusCode.OK, page3);
         this.context.Handler.AddResponse(HttpStatusCode.OK, page4);
 
-        PullResult pullResult = await this.context.PullAsync([typeof(ClientMovie)], new PullOptions());
+        PullResult pullResult = await this.context.PullAsync([typeof(ClientMovie)], new PullOptions(), TestContext.Current.CancellationToken);
 
         pullResult.IsSuccessful.Should().BeTrue();
         pullResult.Additions.Should().Be(20);
@@ -62,7 +63,7 @@ public class OfflineDbContext_Tests : BaseTest
         pullResult.Replacements.Should().Be(0);
 
         List<ClientMovie> expected = page1.Items.Concat(page2.Items).Concat(page3.Items).Concat(page4.Items).ToList();
-        List<ClientMovie> actual = await this.context.Movies.ToListAsync();
+        List<ClientMovie> actual = await this.context.Movies.ToListAsync(TestContext.Current.CancellationToken);
 
         actual.Should().BeEquivalentTo(expected);
 
@@ -90,7 +91,7 @@ public class OfflineDbContext_Tests : BaseTest
         this.context.Handler.AddResponse(HttpStatusCode.OK, page3);
         this.context.Handler.AddResponse(HttpStatusCode.OK, page4);
 
-        PullResult pullResult = await this.context.Movies.PullAsync();
+        PullResult pullResult = await this.context.Movies.PullAsync(TestContext.Current.CancellationToken);
 
         pullResult.IsSuccessful.Should().BeTrue();
         pullResult.Additions.Should().Be(20);
@@ -98,7 +99,7 @@ public class OfflineDbContext_Tests : BaseTest
         pullResult.Replacements.Should().Be(0);
 
         List<ClientMovie> expected = page1.Items.Concat(page2.Items).Concat(page3.Items).Concat(page4.Items).ToList();
-        List<ClientMovie> actual = await this.context.Movies.ToListAsync();
+        List<ClientMovie> actual = await this.context.Movies.ToListAsync(TestContext.Current.CancellationToken);
 
         actual.Should().BeEquivalentTo(expected);
 
@@ -134,7 +135,7 @@ public class OfflineDbContext_Tests : BaseTest
                 options.QueryId = "abc";
                 options.Query.Where(x => x.Title.StartsWith("abc"));
             });
-        });
+        }, TestContext.Current.CancellationToken);
 
         pullResult.IsSuccessful.Should().BeTrue();
         pullResult.Additions.Should().Be(20);
@@ -142,7 +143,7 @@ public class OfflineDbContext_Tests : BaseTest
         pullResult.Replacements.Should().Be(0);
 
         List<ClientMovie> expected = page1.Items.Concat(page2.Items).Concat(page3.Items).Concat(page4.Items).ToList();
-        List<ClientMovie> actual = await this.context.Movies.ToListAsync();
+        List<ClientMovie> actual = await this.context.Movies.ToListAsync(TestContext.Current.CancellationToken);
 
         actual.Should().BeEquivalentTo(expected);
 
@@ -178,7 +179,7 @@ public class OfflineDbContext_Tests : BaseTest
                 options.QueryId = string.Empty;
                 options.Query.Where(x => x.Title.StartsWith("abc"));
             });
-        });
+        }, TestContext.Current.CancellationToken);
 
         pullResult.IsSuccessful.Should().BeTrue();
         pullResult.Additions.Should().Be(20);
@@ -186,7 +187,7 @@ public class OfflineDbContext_Tests : BaseTest
         pullResult.Replacements.Should().Be(0);
 
         List<ClientMovie> expected = page1.Items.Concat(page2.Items).Concat(page3.Items).Concat(page4.Items).ToList();
-        List<ClientMovie> actual = await this.context.Movies.ToListAsync();
+        List<ClientMovie> actual = await this.context.Movies.ToListAsync(TestContext.Current.CancellationToken);
 
         actual.Should().BeEquivalentTo(expected);
 
@@ -229,7 +230,7 @@ public class OfflineDbContext_Tests : BaseTest
                 options.QueryId = string.Empty;
                 options.Query.Where(x => x.Title.StartsWith("abc"));
             });
-        });
+        }, TestContext.Current.CancellationToken);
 
         pullResult.IsSuccessful.Should().BeTrue();
         pullResult.Additions.Should().Be(20);
@@ -237,7 +238,7 @@ public class OfflineDbContext_Tests : BaseTest
         pullResult.Replacements.Should().Be(0);
 
         List<ClientMovie> expected = page1.Items.Concat(page2.Items).Concat(page3.Items).Concat(page4.Items).ToList();
-        List<ClientMovie> actual = await this.context.Movies.ToListAsync();
+        List<ClientMovie> actual = await this.context.Movies.ToListAsync(TestContext.Current.CancellationToken);
 
         actual.Should().BeEquivalentTo(expected);
 
@@ -268,7 +269,7 @@ public class OfflineDbContext_Tests : BaseTest
         PullResult pullResult = await this.context.PullAsync(cfg =>
         {
             cfg.AddPullRequest<ClientMovie>();
-        });
+        }, TestContext.Current.CancellationToken);
 
         pullResult.IsSuccessful.Should().BeTrue();
         pullResult.Additions.Should().Be(20);
@@ -276,7 +277,7 @@ public class OfflineDbContext_Tests : BaseTest
         pullResult.Replacements.Should().Be(0);
 
         List<ClientMovie> expected = page1.Items.Concat(page2.Items).Concat(page3.Items).Concat(page4.Items).ToList();
-        List<ClientMovie> actual = await this.context.Movies.ToListAsync();
+        List<ClientMovie> actual = await this.context.Movies.ToListAsync(TestContext.Current.CancellationToken);
 
         actual.Should().BeEquivalentTo(expected);
 
@@ -306,9 +307,9 @@ public class OfflineDbContext_Tests : BaseTest
 
         DatasyncDeltaToken token = new() { Id = typeof(ClientMovie).FullName!, Value = 1724444574291L };
         this.context.DatasyncDeltaTokens.Add(token);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        PullResult pullResult = await this.context.PullAsync([typeof(ClientMovie)], new PullOptions());
+        PullResult pullResult = await this.context.PullAsync([typeof(ClientMovie)], new PullOptions(), TestContext.Current.CancellationToken);
 
         pullResult.IsSuccessful.Should().BeTrue();
         pullResult.Additions.Should().Be(20);
@@ -316,7 +317,7 @@ public class OfflineDbContext_Tests : BaseTest
         pullResult.Replacements.Should().Be(0);
 
         List<ClientMovie> expected = page1.Items.Concat(page2.Items).Concat(page3.Items).Concat(page4.Items).ToList();
-        List<ClientMovie> actual = await this.context.Movies.ToListAsync();
+        List<ClientMovie> actual = await this.context.Movies.ToListAsync(TestContext.Current.CancellationToken);
 
         actual.Should().BeEquivalentTo(expected);
 
@@ -347,9 +348,9 @@ public class OfflineDbContext_Tests : BaseTest
 
         DatasyncDeltaToken token = new() { Id = typeof(ClientMovie).FullName!, Value = 1724444574291L };
         this.context.DatasyncDeltaTokens.Add(token);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        PullResult pullResult = await this.context.PullAsync([typeof(ClientMovie)], new PullOptions());
+        PullResult pullResult = await this.context.PullAsync([typeof(ClientMovie)], new PullOptions(), TestContext.Current.CancellationToken);
 
         pullResult.IsSuccessful.Should().BeTrue();
         pullResult.Additions.Should().Be(19);
@@ -357,7 +358,7 @@ public class OfflineDbContext_Tests : BaseTest
         pullResult.Replacements.Should().Be(0);
 
         List<ClientMovie> expected = page1.Items.Concat(page2.Items).Concat(page3.Items).Concat(page4.Items).Where(x => !x.Deleted).ToList();
-        List<ClientMovie> actual = await this.context.Movies.ToListAsync();
+        List<ClientMovie> actual = await this.context.Movies.ToListAsync(TestContext.Current.CancellationToken);
 
         actual.Should().BeEquivalentTo(expected);
 
@@ -397,7 +398,7 @@ public class OfflineDbContext_Tests : BaseTest
         this.context.Handler.AddResponse(HttpStatusCode.OK, page3);
         this.context.Handler.AddResponse(HttpStatusCode.OK, page4);
 
-        PullResult pullResult = await this.context.PullAsync([typeof(ClientMovie)], new PullOptions());
+        PullResult pullResult = await this.context.PullAsync([typeof(ClientMovie)], new PullOptions(), TestContext.Current.CancellationToken);
 
         pullResult.IsSuccessful.Should().BeTrue();
         pullResult.Additions.Should().Be(18);
@@ -405,7 +406,7 @@ public class OfflineDbContext_Tests : BaseTest
         pullResult.Replacements.Should().Be(1);
 
         List<ClientMovie> expected = page1.Items.Concat(page2.Items).Concat(page3.Items).Concat(page4.Items).Where(x => !x.Deleted).ToList();
-        List<ClientMovie> actual = await this.context.Movies.ToListAsync();
+        List<ClientMovie> actual = await this.context.Movies.ToListAsync(TestContext.Current.CancellationToken);
 
         actual.Should().BeEquivalentTo(expected);
 
@@ -421,7 +422,7 @@ public class OfflineDbContext_Tests : BaseTest
     {
         this.context.Handler.AddResponse(HttpStatusCode.BadRequest);
 
-        PullResult pullResult = await this.context.PullAsync([typeof(ClientMovie)], new PullOptions());
+        PullResult pullResult = await this.context.PullAsync([typeof(ClientMovie)], new PullOptions(), TestContext.Current.CancellationToken);
 
         pullResult.IsSuccessful.Should().BeFalse();
         pullResult.FailedRequests.Should().HaveCount(1);
@@ -432,7 +433,7 @@ public class OfflineDbContext_Tests : BaseTest
     [Fact]
     public async Task PullAsync_List_NoRequests()
     {
-        PullResult pullResult = await this.context.PullAsync([], new PullOptions());
+        PullResult pullResult = await this.context.PullAsync((IEnumerable<Type>)[], new PullOptions(), TestContext.Current.CancellationToken);
 
         pullResult.IsSuccessful!.Should().BeTrue();
         pullResult.OperationCount.Should().Be(0);
@@ -494,7 +495,7 @@ public class OfflineDbContext_Tests : BaseTest
         List<Type> allowedTypes = [typeof(Entity1), typeof(Entity2), typeof(Entity4)];
         Type[] entityTypes = allowedTypes.Take(nItems).ToArray();
 
-        PushResult result = await this.context.PushAsync(entityTypes, options);
+        PushResult result = await this.context.PushAsync(entityTypes, options, TestContext.Current.CancellationToken);
         result.CompletedOperations.Should().Be(0);
         result.FailedRequests.Count.Should().Be(0);
     }
@@ -505,7 +506,7 @@ public class OfflineDbContext_Tests : BaseTest
         PushOptions options = new();
         Type[] entityTypes = [typeof(ClientMovie)];
 
-        PushResult result = await this.context.PushAsync(entityTypes, options);
+        PushResult result = await this.context.PushAsync(entityTypes, options, TestContext.Current.CancellationToken);
         result.CompletedOperations.Should().Be(0);
         result.FailedRequests.Count.Should().Be(0);
     }
@@ -515,7 +516,7 @@ public class OfflineDbContext_Tests : BaseTest
     {
         PushOptions options = new();
 
-        PushResult result = await this.context.Movies.PushAsync(options);
+        PushResult result = await this.context.Movies.PushAsync(options, TestContext.Current.CancellationToken);
         result.CompletedOperations.Should().Be(0);
         result.FailedRequests.Count.Should().Be(0);
     }
@@ -532,7 +533,7 @@ public class OfflineDbContext_Tests : BaseTest
         string expectedJson = DatasyncSerializer.Serialize(responseMovie);
         this.context.Handler.AddResponseContent(expectedJson, HttpStatusCode.Created);
 
-        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions());
+        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
         results.IsSuccessful.Should().BeTrue();
         results.CompletedOperations.Should().Be(1);
         results.FailedRequests.Should().BeEmpty();
@@ -556,7 +557,7 @@ public class OfflineDbContext_Tests : BaseTest
         string expectedJson = DatasyncSerializer.Serialize(responseMovie);
         this.context.Handler.AddResponseContent(expectedJson, HttpStatusCode.Created);
 
-        PushResult results = await this.context.Movies.PushAsync();
+        PushResult results = await this.context.Movies.PushAsync(TestContext.Current.CancellationToken);
         results.IsSuccessful.Should().BeTrue();
         results.CompletedOperations.Should().Be(1);
         results.FailedRequests.Should().BeEmpty();
@@ -577,7 +578,7 @@ public class OfflineDbContext_Tests : BaseTest
 
         this.context.Handler.AddResponse(HttpStatusCode.InternalServerError);
 
-        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions());
+        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
         results.IsSuccessful.Should().BeFalse();
         results.CompletedOperations.Should().Be(0);
         results.FailedRequests.Should().HaveCount(1);
@@ -602,7 +603,7 @@ public class OfflineDbContext_Tests : BaseTest
         string expectedJson = DatasyncSerializer.Serialize(responseMovie);
         this.context.Handler.AddResponseContent(expectedJson, HttpStatusCode.Conflict);
 
-        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions());
+        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
         results.IsSuccessful.Should().BeFalse();
         results.CompletedOperations.Should().Be(0);
         results.FailedRequests.Should().HaveCount(1);
@@ -629,7 +630,7 @@ public class OfflineDbContext_Tests : BaseTest
         this.context.SaveChanges();
         this.context.Handler.AddResponse(HttpStatusCode.NoContent);
 
-        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions());
+        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
         results.IsSuccessful.Should().BeTrue();
         results.CompletedOperations.Should().Be(1);
         results.FailedRequests.Should().BeEmpty();
@@ -649,7 +650,7 @@ public class OfflineDbContext_Tests : BaseTest
         this.context.SaveChanges();
         this.context.Handler.AddResponse(HttpStatusCode.NoContent);
 
-        PushResult results = await this.context.Movies.PushAsync();
+        PushResult results = await this.context.Movies.PushAsync(TestContext.Current.CancellationToken);
         results.IsSuccessful.Should().BeTrue();
         results.CompletedOperations.Should().Be(1);
         results.FailedRequests.Should().BeEmpty();
@@ -669,7 +670,7 @@ public class OfflineDbContext_Tests : BaseTest
         this.context.SaveChanges();
         this.context.Handler.AddResponse(HttpStatusCode.InternalServerError);
 
-        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions());
+        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
         results.IsSuccessful.Should().BeFalse();
         results.CompletedOperations.Should().Be(0);
         results.FailedRequests.Should().HaveCount(1);
@@ -697,7 +698,7 @@ public class OfflineDbContext_Tests : BaseTest
         string expectedJson = DatasyncSerializer.Serialize(responseMovie);
         this.context.Handler.AddResponseContent(expectedJson, HttpStatusCode.Conflict);
 
-        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions());
+        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
         results.IsSuccessful.Should().BeFalse();
         results.CompletedOperations.Should().Be(0);
         results.FailedRequests.Should().HaveCount(1);
@@ -728,7 +729,7 @@ public class OfflineDbContext_Tests : BaseTest
         string expectedJson = DatasyncSerializer.Serialize(responseMovie);
         this.context.Handler.AddResponseContent(expectedJson, HttpStatusCode.OK);
 
-        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions());
+        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
         results.IsSuccessful.Should().BeTrue();
         results.CompletedOperations.Should().Be(1);
         results.FailedRequests.Should().BeEmpty();
@@ -751,7 +752,7 @@ public class OfflineDbContext_Tests : BaseTest
         string expectedJson = DatasyncSerializer.Serialize(responseMovie);
         this.context.Handler.AddResponseContent(expectedJson, HttpStatusCode.OK);
 
-        PushResult results = await this.context.Movies.PushAsync();
+        PushResult results = await this.context.Movies.PushAsync(TestContext.Current.CancellationToken);
         results.IsSuccessful.Should().BeTrue();
         results.CompletedOperations.Should().Be(1);
         results.FailedRequests.Should().BeEmpty();
@@ -771,7 +772,7 @@ public class OfflineDbContext_Tests : BaseTest
         this.context.SaveChanges();
         this.context.Handler.AddResponse(HttpStatusCode.InternalServerError);
 
-        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions());
+        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
         results.IsSuccessful.Should().BeFalse();
         results.CompletedOperations.Should().Be(0);
         results.FailedRequests.Should().HaveCount(1);
@@ -800,7 +801,7 @@ public class OfflineDbContext_Tests : BaseTest
         string expectedJson = DatasyncSerializer.Serialize(responseMovie);
         this.context.Handler.AddResponseContent(expectedJson, HttpStatusCode.Conflict);
 
-        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions());
+        PushResult results = await this.context.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
         results.IsSuccessful.Should().BeFalse();
         results.CompletedOperations.Should().Be(0);
         results.FailedRequests.Should().HaveCount(1);
@@ -1109,7 +1110,7 @@ public class OfflineDbContext_Tests : BaseTest
         string serializedEntity = DatasyncSerializer.Serialize(clientMovie);
 
         this.context.Movies.Add(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.context.Movies.Should().HaveCount(1);
         this.context.DatasyncOperationsQueue.Should().HaveCount(1);
@@ -1135,7 +1136,7 @@ public class OfflineDbContext_Tests : BaseTest
 
         this.context.Movies.Add(firstMovie);
         this.context.Movies.Add(secondMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.context.Movies.Should().HaveCount(2);
         this.context.DatasyncOperationsQueue.Should().HaveCount(2);
@@ -1181,10 +1182,10 @@ public class OfflineDbContext_Tests : BaseTest
     {
         ClientMovie clientMovie = new(TestData.Movies.BlackPanther) { Id = Guid.NewGuid().ToString("N") };
         this.context.Movies.Add(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.context.Movies.Remove(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.context.Movies.Should().HaveCount(0);
         this.context.DatasyncOperationsQueue.Should().HaveCount(0);
@@ -1195,12 +1196,12 @@ public class OfflineDbContext_Tests : BaseTest
     {
         ClientMovie clientMovie = new(TestData.Movies.BlackPanther) { Id = Guid.NewGuid().ToString("N") };
         this.context.Movies.Add(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         clientMovie.Title = "Foo";
         string serializedEntity = DatasyncSerializer.Serialize(clientMovie);
         this.context.Movies.Update(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.context.Movies.Should().HaveCount(1);
         this.context.DatasyncOperationsQueue.Should().HaveCount(1);
@@ -1221,10 +1222,10 @@ public class OfflineDbContext_Tests : BaseTest
         ClientMovie clientMovie = new(TestData.Movies.BlackPanther) { Id = Guid.NewGuid().ToString("N") };
         string serializedEntity = DatasyncSerializer.Serialize(clientMovie);
         this.context.Movies.Add(clientMovie);
-        await this.context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false);
+        await this.context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false, TestContext.Current.CancellationToken);
 
         this.context.Movies.Remove(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.context.Movies.Should().HaveCount(0);
         this.context.DatasyncOperationsQueue.Should().HaveCount(1);
@@ -1245,13 +1246,13 @@ public class OfflineDbContext_Tests : BaseTest
         ClientMovie clientMovie = new(TestData.Movies.BlackPanther) { Id = Guid.NewGuid().ToString("N") };
         string serializedEntity = DatasyncSerializer.Serialize(clientMovie);
         this.context.Movies.Add(clientMovie);
-        await this.context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false);
+        await this.context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false, TestContext.Current.CancellationToken);
 
         this.context.Movies.Remove(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.context.Movies.Add(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.context.Movies.Should().HaveCount(1);
         this.context.DatasyncOperationsQueue.Should().HaveCount(1);
@@ -1287,7 +1288,7 @@ public class OfflineDbContext_Tests : BaseTest
         };
 
         this.context.DatasyncOperationsQueue.Add(badOperation);
-        await this.context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false);
+        await this.context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false, TestContext.Current.CancellationToken);
 
         Func<Task> act = async () =>
         {
@@ -1305,12 +1306,12 @@ public class OfflineDbContext_Tests : BaseTest
     {
         ClientMovie clientMovie = new(TestData.Movies.BlackPanther) { Id = Guid.NewGuid().ToString("N") };
         this.context.Movies.Add(clientMovie);
-        await this.context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false);
+        await this.context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false, TestContext.Current.CancellationToken);
 
         clientMovie.Title = "Replaced Title";
         string serializedEntity = DatasyncSerializer.Serialize(clientMovie);
         this.context.Movies.Update(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.context.Movies.Should().HaveCount(1);
         this.context.DatasyncOperationsQueue.Should().HaveCount(1);
@@ -1330,15 +1331,15 @@ public class OfflineDbContext_Tests : BaseTest
     {
         ClientMovie clientMovie = new(TestData.Movies.BlackPanther) { Id = Guid.NewGuid().ToString("N") };
         this.context.Movies.Add(clientMovie);
-        await this.context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false);
+        await this.context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false, TestContext.Current.CancellationToken);
 
         clientMovie.Title = "Replaced Title";
         string serializedEntity = DatasyncSerializer.Serialize(clientMovie);
         this.context.Movies.Update(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.context.Movies.Remove(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.context.Movies.Should().HaveCount(0);
         this.context.DatasyncOperationsQueue.Should().HaveCount(1);
@@ -1358,16 +1359,16 @@ public class OfflineDbContext_Tests : BaseTest
     {
         ClientMovie clientMovie = new(TestData.Movies.BlackPanther) { Id = Guid.NewGuid().ToString("N") };
         this.context.Movies.Add(clientMovie);
-        await this.context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false);
+        await this.context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false, TestContext.Current.CancellationToken);
 
         clientMovie.Title = "Replaced Title";
         this.context.Movies.Update(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         clientMovie.Title = "Foo";
         string serializedEntity = DatasyncSerializer.Serialize(clientMovie);
         this.context.Movies.Update(clientMovie);
-        await this.context.SaveChangesAsync();
+        await this.context.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         this.context.Movies.Should().HaveCount(1);
         this.context.DatasyncOperationsQueue.Should().HaveCount(1);
@@ -1431,6 +1432,182 @@ public class OfflineDbContext_Tests : BaseTest
         Func<Task> act = async () => await context.Movies.PushAsync();
         await act.Should().ThrowAsync<DatasyncException>();
     }
+    #endregion
+
+    #region SynchronizationProgress
+    [Fact]
+    public async Task SynchronizationProgress_Event_Works()
+    {
+        Page<ClientMovie> page1 = CreatePage(5, 20, "$skip=5");
+        Page<ClientMovie> page2 = CreatePage(5, 20, "$skip=10");
+        Page<ClientMovie> page3 = CreatePage(5, 20, "$skip=15");
+        Page<ClientMovie> page4 = CreatePage(5, 20);
+
+        this.context.Handler.AddResponse(HttpStatusCode.OK, page1);
+        this.context.Handler.AddResponse(HttpStatusCode.OK, page2);
+        this.context.Handler.AddResponse(HttpStatusCode.OK, page3);
+        this.context.Handler.AddResponse(HttpStatusCode.OK, page4);
+
+        bool eventFiredForFetch = false;
+        bool eventFiredForCommit = false;
+        bool eventFiredForStart = false;
+        bool eventFiredForEnd = false;
+        long currentItemsFetched = 0;
+        long currentItemsCommited = 0;
+
+        this.context.SynchronizationProgress += (sender, args) =>
+        {
+            sender.Should().Be(this.context);
+            args.EntityType.Should().Be<ClientMovie>();
+            args.QueryId.Should().Be("CommunityToolkit.Datasync.TestCommon.Databases.ClientMovie");
+            args.Exception.Should().BeNull();   // We don't test exceptions here, so should always be null.
+            args.ServiceResponse.Should().BeNull();
+            switch (args.EventType)
+            {
+                case SynchronizationEventType.ItemsFetched:
+                    currentItemsFetched += 5;
+                    args.ItemsProcessed.Should().Be(currentItemsFetched);
+                    args.ItemsTotal.Should().Be(20);
+                    eventFiredForFetch = true;
+                    break;
+                case SynchronizationEventType.ItemsCommitted:
+                    currentItemsCommited += 5;
+                    args.ItemsProcessed.Should().Be(currentItemsCommited);
+                    args.ItemsTotal.Should().Be(20);
+                    eventFiredForCommit = true;
+                    break;
+                case SynchronizationEventType.PullStarted:
+                    eventFiredForStart.Should().BeFalse("PullStarted event should only fire once");
+                    eventFiredForStart = true;
+                    break;
+                case SynchronizationEventType.PullEnded:
+                    eventFiredForEnd.Should().BeFalse("PullEnded event should only fire once");
+                    eventFiredForEnd = true;
+                    args.ItemsProcessed.Should().Be(20);
+                    args.ItemsTotal.Should().Be(20);
+                    break;
+                default:
+                    Assert.Fail($"Invalid event type: {args.EventType}");
+                    break;
+            }
+        };
+
+        await this.context.Movies.PullAsync(TestContext.Current.CancellationToken);
+
+        eventFiredForStart.Should().BeTrue();
+        eventFiredForFetch.Should().BeTrue();
+        eventFiredForCommit.Should().BeTrue();
+        eventFiredForEnd.Should().BeTrue();
+        currentItemsFetched.Should().Be(20);
+        currentItemsCommited.Should().Be(20);
+    }
+
+    [Fact]
+    public async Task PullAsync_List_FailedRequest_SynchronizationEventWorks()
+    {
+        this.context.Handler.AddResponse(HttpStatusCode.BadRequest);
+
+        bool eventFiredForStart = false;
+        bool eventFiredForEnd = false;
+
+        this.context.SynchronizationProgress += (sender, args) =>
+        {
+            sender.Should().Be(this.context);
+            args.EntityType.Should().Be<ClientMovie>();
+            args.QueryId.Should().Be("CommunityToolkit.Datasync.TestCommon.Databases.ClientMovie");
+            switch (args.EventType)
+            {
+                case SynchronizationEventType.PullStarted:
+                    eventFiredForStart.Should().BeFalse("PullStarted event should only fire once");
+                    eventFiredForStart = true;
+                    args.Exception.Should().BeNull();
+                    args.ServiceResponse.Should().BeNull();
+                    break;
+                case SynchronizationEventType.PullEnded:
+                    eventFiredForEnd.Should().BeFalse("PullEnded event should only fire once");
+                    eventFiredForEnd = true;
+                    args.Exception.Should().NotBeNull();
+                    args.Exception.Should().BeOfType<Client.Exceptions.DatasyncPullException>();
+                    args.ServiceResponse.Should().NotBeNull();
+                    args.ServiceResponse.StatusCode.Should().Be(400);
+                    break;
+                default:
+                    Assert.Fail($"Unexpected event type: {args.EventType}");
+                    break;
+            }
+        };
+
+        PullResult pullResult = await this.context.PullAsync([typeof(ClientMovie)], new PullOptions(), TestContext.Current.CancellationToken);
+
+        eventFiredForStart.Should().BeTrue();
+        eventFiredForEnd.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task SynchronizationProgress_Event_Works_For_Push()
+    {
+        // Add movies for testing
+        (MovieBase movie, string id)[] newMovies =
+            [
+                (TestData.Movies.BlackPanther,Guid.NewGuid().ToString("N")),
+                (TestData.Movies.Dune,Guid.NewGuid().ToString("N")),
+                (TestData.Movies.DrNo ,Guid.NewGuid().ToString("N")),
+            ];
+
+        foreach ((MovieBase movie, string id) in newMovies)
+        {
+            this.context.Movies.Add(new(movie) { Id = id });
+            ClientMovie responseMovie = new(movie) { Id = id, UpdatedAt = DateTimeOffset.UtcNow, Version = Guid.NewGuid().ToString() };
+            this.context.Handler.AddResponseContent(DatasyncSerializer.Serialize(responseMovie), HttpStatusCode.Created);
+            this.context.SaveChanges();
+        }
+
+        bool eventFiredForItem = false;
+        bool eventFiredForStart = false;
+        bool eventFiredForEnd = false;
+        int[] itemsProcessedReported = new int[newMovies.Length];    // Due to multithreading, we can't guarantee the order of items processed. So register arrival of each separately.
+
+        this.context.SynchronizationProgress += (sender, args) =>
+        {
+            sender.Should().Be(this.context);
+            args.Exception.Should().BeNull();
+            args.ServiceResponse.Should().BeNull();
+            args.ItemsTotal.Should().Be(newMovies.Length);
+            switch (args.EventType)
+            {
+                case SynchronizationEventType.PushItem:
+                    args.ItemsTotal.Should().Be(newMovies.Length);
+                    args.ItemsProcessed.Should().BeInRange(1,newMovies.Length);
+                    int prevProcessed = Interlocked.Exchange(ref itemsProcessedReported[args.ItemsProcessed-1], 1);
+                    prevProcessed.Should().Be(0, "Each item should only be reported once");
+                    args.PushOperation.Should().NotBeNull();
+                    args.PushOperation.ItemId.Should().Be(newMovies[args.ItemsProcessed - 1].id);
+                    eventFiredForItem = true;
+                    break;
+                case SynchronizationEventType.PushStarted:
+                    eventFiredForStart.Should().BeFalse("PushStarted event should only fire once");
+                    eventFiredForStart = true;
+                    break;
+                case SynchronizationEventType.PushEnded:
+                    eventFiredForEnd.Should().BeFalse("PushEnded event should only fire once");
+                    eventFiredForEnd = true;
+                    args.ItemsProcessed.Should().Be(newMovies.Length);
+                    itemsProcessedReported.Should().OnlyContain(x => x == 1, "All items should be reported as processed");
+                    args.PushOperation.Should().BeNull();
+                    break;
+                default:
+                    Assert.Fail($"Invalid event type: {args.EventType}");
+                    break;
+            }
+        };
+
+        PushResult results = await this.context.Movies.PushAsync(TestContext.Current.CancellationToken);
+
+        eventFiredForStart.Should().BeTrue();
+        eventFiredForItem.Should().BeTrue();
+        eventFiredForEnd.Should().BeTrue();
+    }
+
     #endregion
 
     public class NotOfflineDbContext : DbContext

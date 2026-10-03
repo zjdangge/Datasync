@@ -33,7 +33,7 @@ public class ConflictResolver_Tests : BaseTest
         };
 
         // Act
-        var resolution = await clientResolver.ResolveConflictAsync(clientObject, serverObject);
+        var resolution = await clientResolver.ResolveConflictAsync(clientObject, serverObject, TestContext.Current.CancellationToken);
 
         // Assert
         resolution.Result.Should().Be(ConflictResolutionResult.Client);
@@ -53,7 +53,7 @@ public class ConflictResolver_Tests : BaseTest
         };
 
         // Act
-        var resolution = await serverResolver.ResolveConflictAsync(clientObject, serverObject);
+        var resolution = await serverResolver.ResolveConflictAsync(clientObject, serverObject, TestContext.Current.CancellationToken);
 
         // Assert
         resolution.Result.Should().Be(ConflictResolutionResult.Server);
@@ -68,7 +68,7 @@ public class ConflictResolver_Tests : BaseTest
         var clientObject = new ClientMovie(TestData.Movies.BlackPanther) { Id = "test-id" };
 
         // Act
-        var resolution = await clientResolver.ResolveConflictAsync(clientObject, null);
+        var resolution = await clientResolver.ResolveConflictAsync(clientObject, null, TestContext.Current.CancellationToken);
 
         // Assert
         resolution.Result.Should().Be(ConflictResolutionResult.Client);
@@ -87,7 +87,7 @@ public class ConflictResolver_Tests : BaseTest
         };
 
         // Act
-        var resolution = await serverResolver.ResolveConflictAsync(null, serverObject);
+        var resolution = await serverResolver.ResolveConflictAsync(null, serverObject, TestContext.Current.CancellationToken);
 
         // Assert
         resolution.Result.Should().Be(ConflictResolutionResult.Server);
@@ -112,7 +112,7 @@ public class ConflictResolver_Tests : BaseTest
         };
 
         // Act
-        var resolution = await resolver.ResolveConflictAsync(clientObject, serverObject);
+        var resolution = await resolver.ResolveConflictAsync(clientObject, serverObject, TestContext.Current.CancellationToken);
 
         // Assert
         resolution.Result.Should().Be(ConflictResolutionResult.Client);
@@ -136,7 +136,7 @@ public class ConflictResolver_Tests : BaseTest
         };
 
         // Act
-        var resolution = await resolver.ResolveConflictAsync((object)clientObject, (object)serverObject);
+        var resolution = await resolver.ResolveConflictAsync((object)clientObject, (object)serverObject, TestContext.Current.CancellationToken);
 
         // Assert
         resolution.Result.Should().Be(ConflictResolutionResult.Client);
@@ -154,7 +154,7 @@ public class ConflictResolver_Tests : BaseTest
         var resolver = new TestGenericConflictResolver();
 
         // Act
-        var resolution = await resolver.ResolveConflictAsync(null, null);
+        var resolution = await resolver.ResolveConflictAsync(null, null, TestContext.Current.CancellationToken);
 
         // Assert
         resolution.Result.Should().Be(ConflictResolutionResult.Default);
@@ -164,6 +164,71 @@ public class ConflictResolver_Tests : BaseTest
     #endregion
 
     #region Integration with OperationsQueueManager Tests
+
+    [Fact]
+    public async Task PushAsync_WithDefaultClientWinsResolver_ShouldResolveConflictAndRetry()
+    {
+        // Arrange
+        var context = CreateContext();
+
+        // Configure context to use client wins resolver
+        context.Configurator = builder =>
+        {
+            builder.UseDefaultConflictResolver(new ClientWinsConflictResolver());
+            builder.Entity<ClientMovie>(c =>
+            {
+                c.ClientName = "movies";
+                c.Endpoint = new Uri("/tables/movies", UriKind.Relative);
+            });
+        };
+
+        // Create a client movie and save it to generate operation
+        var clientMovie = new ClientMovie(TestData.Movies.BlackPanther)
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Title = "Client Title"
+        };
+        context.Movies.Add(clientMovie);
+        context.SaveChanges();
+
+        // Setup response for conflict followed by success
+        var serverMovie = new ClientMovie(TestData.Movies.BlackPanther)
+        {
+            Id = clientMovie.Id,
+            Title = "Server Title",
+            UpdatedAt = DateTimeOffset.UtcNow,
+            Version = Guid.NewGuid().ToString()
+        };
+        string serverJson = DatasyncSerializer.Serialize(serverMovie);
+
+        // First response is a conflict
+        context.Handler.AddResponseContent(serverJson, HttpStatusCode.Conflict);
+
+        // Second response (after resolution) is success
+        var finalMovie = new ClientMovie(TestData.Movies.BlackPanther)
+        {
+            Id = clientMovie.Id,
+            Title = "Client Title",  // This should match the client version after resolution
+            UpdatedAt = DateTimeOffset.UtcNow.AddSeconds(1),
+            Version = Guid.NewGuid().ToString()
+        };
+        string finalJson = DatasyncSerializer.Serialize(finalMovie);
+        context.Handler.AddResponseContent(finalJson, HttpStatusCode.OK);
+
+        // Act
+        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsSuccessful.Should().BeTrue();
+        result.CompletedOperations.Should().Be(1);
+        result.FailedRequests.Should().BeEmpty();
+
+        // Verify the database has the right value
+        var savedMovie = context.Movies.Find(clientMovie.Id);
+        savedMovie.Should().NotBeNull();
+        savedMovie!.Title.Should().Be("Client Title");
+        savedMovie.Version.Should().Be(finalMovie.Version);
+    }
 
     [Fact]
     public async Task PushAsync_WithClientWinsResolver_ShouldResolveConflictAndRetry()
@@ -216,7 +281,7 @@ public class ConflictResolver_Tests : BaseTest
         context.Handler.AddResponseContent(finalJson, HttpStatusCode.OK);
 
         // Act
-        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions());
+        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccessful.Should().BeTrue();
@@ -274,7 +339,7 @@ public class ConflictResolver_Tests : BaseTest
         context.Handler.AddResponseContent(finalJson, HttpStatusCode.OK);
 
         // Act
-        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions());
+        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccessful.Should().BeTrue();
@@ -335,7 +400,7 @@ public class ConflictResolver_Tests : BaseTest
         context.Handler.AddResponseContent(finalJson, HttpStatusCode.OK);
 
         // Act
-        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions());
+        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccessful.Should().BeTrue();
@@ -394,7 +459,7 @@ public class ConflictResolver_Tests : BaseTest
         context.Handler.AddResponseContent(finalJson, HttpStatusCode.OK);
 
         // Act
-        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions());
+        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccessful.Should().BeTrue();
@@ -448,7 +513,7 @@ public class ConflictResolver_Tests : BaseTest
         context.Handler.AddResponse(HttpStatusCode.NoContent);
 
         // Act
-        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions());
+        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccessful.Should().BeTrue();
@@ -491,7 +556,7 @@ public class ConflictResolver_Tests : BaseTest
         context.Handler.AddResponse(HttpStatusCode.NoContent);
 
         // Act
-        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions());
+        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccessful.Should().BeTrue();
@@ -531,7 +596,7 @@ public class ConflictResolver_Tests : BaseTest
         context.Handler.AddResponseContent(DatasyncSerializer.Serialize(serverMovie), HttpStatusCode.Conflict);
 
         // Act
-        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions());
+        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccessful.Should().BeTrue();
@@ -572,7 +637,7 @@ public class ConflictResolver_Tests : BaseTest
         context.Handler.AddResponseContent(serverJson, HttpStatusCode.Conflict);
 
         // Act
-        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions());
+        var result = await context.QueueManager.PushAsync([typeof(ClientMovie)], new PushOptions(), TestContext.Current.CancellationToken);
 
         // Assert
         result.IsSuccessful.Should().BeFalse();
